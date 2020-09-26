@@ -224,13 +224,28 @@ def grid_stitch(
         
 
 def show_videos(
-    cam_ids, grid_shape="auto", win_flags=None, win_size="largest",
-    show_fps=False, func=None, func_args=None, func_kwargs=None
+    stream_ids, grid_shape="auto", win_flags=None, win_size="largest",
+    show_fps=False, out_frames=None, func=None, func_args=None, func_kwargs=None
 ):
     """
-    TODO
+    Args:
+        stream_ids (List[int|str]): A list of video stream paths or webcam 
+            device ids.
+        grid_shape (str|List[int], optional): A string or list of two ints
+            representing the display grid shape.
+        win_flags (int, optional): OpenCV imshow window properties flags.
+        win_size (str|List[int], optional): Display window size.
+        show_fps (bool, optional): Display number of output frames per second.
+        out_frames (list, optional): A list to which displayed frames will be
+            appended for use by the caller.
+        func (function, optional): If provided, frames read from each video
+            stream will be given to `func` during each iteration of the main
+            loop. `func` can process the frames as desired and must return
+            a list of the processed frames.
+        func_args (list, optional): Additional args for `func`.
+        func_kwargs (dict, optional): Additional keyword args for `func`.
     """
-    getters = [VideoGetter(cam_id).start() for cam_id in cam_ids]
+    getters = [VideoGetter(stream_id).start() for stream_id in stream_ids]
     shower = VideoShower(
         win_name="Video streams", win_flags=win_flags
     ).start()
@@ -265,6 +280,9 @@ def show_videos(
             )
 
         shower.frame = image_to_display
+        if out_frames is not None:
+            out_frames.append(image_to_display)
+
         previous_fps.append(int(1 / (time.time() - loop_start_time)))
 
     shower.stop()
