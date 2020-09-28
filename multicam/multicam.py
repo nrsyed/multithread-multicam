@@ -1,7 +1,5 @@
 from collections import deque
-import glob
 import math
-import re
 import threading
 import time
 
@@ -79,23 +77,6 @@ class VideoShower():
     def stop(self):
         cv2.destroyWindow(self.win_name)
         self.stopped = True
-
-
-def get_cam_ids():
-    expr = r"/dev/video([0-9]+)"
-    dev_ids = []
-    for dev in glob.glob("/dev/video*"):
-        match = re.match(expr, dev)
-        if match is not None:
-            dev_ids.append(int(match.groups()[0]))
-
-    cam_ids = []
-    for dev_id in dev_ids:
-        cap = cv2.VideoCapture(dev_id)
-        if cap.isOpened():
-            cam_ids.append(dev_id)
-        cap.release()
-    return cam_ids
 
 
 def resize(img, width=None, height=None, interpolation=cv2.INTER_AREA):
