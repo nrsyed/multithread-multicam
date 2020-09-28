@@ -9,17 +9,24 @@ import multicam
 import yolov3
 
 
-def yolo_multicam_detect_demo(frames, net, device, class_names=None):
+def yolo_multicam_detect_demo(
+    frames, net, device, class_names=None, duplicate_streams=0
+):
+    """
+    Args:
+        frames (List[np.ndarray]): List of frames from each video stream.
+        net (yolov3.darknet.Darknet): Darknet class instance.
+        device (str|torch.device): PyTorch device type.
+        class_names (List[str]): List of Darknet model class names.
+        duplicate_streams (int): Number of times to duplicate each frame.
+            Each duplicate will be fed through the network like any other
+            frame to simulate the processing of `duplicate` * `len(frames)`
+            video streams.
+    """
     frames = [frame for frame in frames]
-    """
-    for i in range(len(frames)):
-        flipped = cv2.flip(frames[i], 1)
-        gray = cv2.cvtColor(
-            cv2.cvtColor(frames[i], cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR
-        )
-        rgb = cv2.cvtColor(frames[i], cv2.COLOR_BGR2RGB)
-        frames.extend([gray, rgb])
-    """
+    if duplicate_streams is not None and duplicate_streams > 0:
+        frames *= duplicate_streams + 1
+
     results = yolov3.inference(net, frames, device=device)
     for i, frame in enumerate(frames):
         bbox_tlbr, class_prob, class_idx = results[i]
@@ -56,6 +63,10 @@ if __name__ == "__main__":
         "-o", "--output", type=pathlib.Path, metavar="<path>",
         help="Path to output video file (.mp4 only)"
     )
+    parser.add_argument(
+        "--duplicate", type=int, metavar="<N>",
+        help="Duplicate each video stream N times"
+    )
     args = vars(parser.parse_args())
 
     if "cuda" in args["device"] and not torch.cuda.is_available():
@@ -86,6 +97,10 @@ if __name__ == "__main__":
     if args["output"] is not None:
         out_frames = []
 
+    duplicate_streams = None
+    if args["duplicate"] is not None:
+        duplicate_streams = args["duplicate"]
+
     # Wrap in try/except so that output video (if specified) is written even
     # if an exception occurs during execution.
     start_time = time.time()
@@ -93,7 +108,10 @@ if __name__ == "__main__":
         multicam.show_videos(
             **show_videos_kwargs, out_frames=out_frames,
             func=yolo_multicam_detect_demo, func_args=[net, args["device"]],
-            func_kwargs={"class_names": class_names}
+            func_kwargs={
+                "class_names": class_names,
+                "duplicate_streams": duplicate_streams
+            }
         )
     except Exception as e:
         raise e
