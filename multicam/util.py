@@ -22,7 +22,7 @@ def get_cam_ids():
         if cap.isOpened():
             cam_ids.append(dev_id)
         cap.release()
-    return cam_ids
+    return sorted(cam_ids)
 
 
 def get_parser():
@@ -37,6 +37,9 @@ def get_parser():
         "-g", "--grid-shape", nargs=2, type=int, metavar=("<rows>", "<cols>"),
         help="Grid shape (one video stream is displayed per grid cell); "
         "if omitted, optimal grid shape is determined automatically"
+    )
+    parser.add_argument(
+        "--show-fps", action="store_true", help="Show processing FPS"
     )
 
     win_size_group = parser.add_argument_group(
@@ -116,3 +119,26 @@ def process_args(multicam_args):
         "win_flags": win_flags,
         "win_size": win_size,
     }
+
+
+def write_mp4(frames, fps, fpath):
+    """
+    Write frames to an .mp4 video.
+
+    Args:
+        frames (List[np.ndarray]): List of frames to be written.
+        fps (int): Framerate of the output video.
+        fpath (str): Path to output video file.
+    """
+    if not fpath.endswith(".mp4"):
+        fpath += ".mp4"
+
+    hw, w = frames[0].shape[:2]
+
+    writer = cv2.VideoWriter(
+        fpath, cv2.VideoWriter_fourcc(*"mp4v"), int(fps), (w, h)
+    )
+
+    for frame in frames:
+        writer.write(frame)
+    writer.release()
