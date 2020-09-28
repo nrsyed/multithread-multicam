@@ -49,12 +49,12 @@ def get_parser():
     win_size_args = win_size_group.add_mutually_exclusive_group()
     win_size_args.add_argument(
         "-f", "--fit-screen", action="store_true",
-        help="Size display window to fill available screen space"
+        help="Size display window to fill available screen space (default)"
     )
     win_size_args.add_argument(
         "-l", "--largest", action="store_true",
-        help="Resize all video streams to dimensions of largest stream "
-        "(default); aspect ratio is preserved"
+        help="Resize all video streams to dimensions of largest stream; "
+        "aspect ratio is preserved"
     )
     win_size_args.add_argument(
         "-m", "--max-size", nargs=2, type=int, metavar=("<width>", "<height>"),
@@ -101,17 +101,17 @@ def process_args(multicam_args):
 
     # Set window size options.
     win_flags = None
-    win_size = "largest"
+    win_size = "fit_screen"
 
-    if multicam_args["fit_screen"]:
-        monitor = screeninfo.get_monitors()[0]
-        win_size = (monitor.width, monitor.height)
-    elif multicam_args["max_size"]:
+    if multicam_args["max_size"]:
         win_size = multicam_args["max_size"]
     elif multicam_args["resize"]:
         win_flags = cv2.WINDOW_NORMAL
     elif multicam_args["smallest"]:
         win_size = "smallest"
+    else:
+        monitor = screeninfo.get_monitors()[0]
+        win_size = (monitor.width, monitor.height)
 
     return {
         "stream_ids": stream_ids,
