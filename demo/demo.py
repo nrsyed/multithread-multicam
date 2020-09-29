@@ -10,7 +10,7 @@ import yolov3
 
 
 def yolo_multicam_detect_demo(
-    frames, net, device, class_names=None, duplicate_streams=0
+    frames, net, device, class_names=None, duplicate_streams=0, prob_thresh=0.05
 ):
     """
     Args:
@@ -27,11 +27,14 @@ def yolo_multicam_detect_demo(
     if duplicate_streams is not None and duplicate_streams > 0:
         frames *= duplicate_streams + 1
 
-    results = yolov3.inference(net, frames, device=device)
+    results = yolov3.inference(
+        net, frames, device=device, prob_thresh=prob_thresh
+    )
     for i, frame in enumerate(frames):
         bbox_tlbr, class_prob, class_idx = results[i]
         yolov3.draw_boxes(
-            frame, bbox_tlbr, class_idx=class_idx, class_names=class_names
+            frame, bbox_tlbr, class_idx=class_idx, class_names=class_names,
+            class_prob=class_prob
         )
     return frames
 
@@ -43,29 +46,35 @@ if __name__ == "__main__":
     # options relevant to the pytorch-yolov3 package and to this demo.
     parser = multicam.get_parser()
     parser.add_argument(
-        "-c", "--config", type=pathlib.Path, default=f"{default_model}.cfg",
-        metavar="<path>", help="Path to Darknet model .config file"
-    )
-    parser.add_argument(
-        "-d", "--device", type=str, default="cuda", metavar="<device>", 
-        help="Device for inference ('cpu', 'cuda', 'cuda:0', etc.)"
-    )
-    parser.add_argument(
-        "-n", "--class-names", type=pathlib.Path, default="coco.names", 
-        metavar="<path>", help="Path to text file of class names"
-    )
-    parser.add_argument(
-        "-w", "--weights", type=pathlib.Path,
-        default=f"{default_model}.weights", metavar="<path>",
-        help="Path to Darknet model weights file"
-    )
-    parser.add_argument(
         "-o", "--output", type=pathlib.Path, metavar="<path>",
         help="Path to output video file (.mp4 only)"
     )
     parser.add_argument(
         "--duplicate", type=int, metavar="<N>",
         help="Duplicate each video stream N times"
+    )
+
+    yolo_args = parser.add_argument_group("YOLOv3 arguments")
+    yolo_args.add_argument(
+        "-c", "--config", type=pathlib.Path, default=f"{default_model}.cfg",
+        metavar="<path>", help="Path to Darknet model .config file"
+    )
+    yolo_args.add_argument(
+        "-d", "--device", type=str, default="cuda", metavar="<device>", 
+        help="Device for inference ('cpu', 'cuda', 'cuda:0', etc.)"
+    )
+    yolo_args.add_argument(
+        "-n", "--class-names", type=pathlib.Path, default="coco.names", 
+        metavar="<path>", help="Path to text file of class names"
+    )
+    yolo_args.add_argument(
+        "-p", "--prob-thresh", type=float, default=0.05, metavar="<prob>",
+        help="Detection probability threshold (default 0.05)"
+    )
+    yolo_args.add_argument(
+        "-w", "--weights", type=pathlib.Path,
+        default=f"{default_model}.weights", metavar="<path>",
+        help="Path to Darknet model weights file"
     )
     args = vars(parser.parse_args())
 
@@ -103,19 +112,26 @@ if __name__ == "__main__":
 
     # Wrap in try/except so that output video (if specified) is written even
     # if an exception occurs during execution.
+    elapsed = None
     start_time = time.time()
     try:
-        multicam.show_videos(
+        elapsed = multicam.show_videos(
             **show_videos_kwargs, out_frames=out_frames,
             func=yolo_multicam_detect_demo, func_args=[net, args["device"]],
             func_kwargs={
                 "class_names": class_names,
-                "duplicate_streams": duplicate_streams
+                "duplicate_streams": duplicate_streams,
+                "prob_thresh": args["prob_thresh"],
             }
         )
     except Exception as e:
         raise e
     finally:
         if args["output"] and out_frames:
-            out_fps = 1 / ((time.time() - start_time) / len(out_frames))
+            # Use actual elapsed time returned by multicam.show_videos if
+            # available. Otherwise (if an exception occurred and nothing was
+            # returned), use time measured by this wrapper.
+            if elapsed is None:
+                elapsed = time.time() - start_time
+            out_fps = 1 / (elapsed / len(out_frames))
             multicam.write_mp4(out_frames, out_fps, args["output"])
