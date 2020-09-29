@@ -30,16 +30,18 @@ def get_parser():
     parser.add_argument(
         "stream_ids", nargs="*", default=[0],
         help="Video stream ids, i.e., webcam device integer or stream URL/path"
-        " (default 0)"
+        " (default 0). To select all connected webcam/video devices, use "
+        "-a/--all-cams option"
     )
-    parser.add_argument("-a", "--all-cams", action="store_true")
+    parser.add_argument(
+        "-a", "--all-cams", action="store_true",
+        help="Select all connected video devices as input sources by checking "
+        "each device at /dev/video*"
+    )
     parser.add_argument(
         "-g", "--grid-shape", nargs=2, type=int, metavar=("<rows>", "<cols>"),
         help="Grid shape (one video stream is displayed per grid cell); "
         "if omitted, optimal grid shape is determined automatically"
-    )
-    parser.add_argument(
-        "--show-fps", action="store_true", help="Show processing FPS"
     )
 
     win_size_group = parser.add_argument_group(
@@ -69,6 +71,10 @@ def get_parser():
         help="Resize all video streams to dimensions of smallest stream; "
         "aspect ratio is preserved"
     )
+
+    parser.add_argument(
+        "--fps", action="store_true", help="Show processing FPS"
+    )
     return parser
 
 
@@ -90,7 +96,7 @@ def process_args(multicam_args):
     else:
         stream_ids = []
         for stream_id in multicam_args["stream_ids"]:
-            if stream_id.isnumeric():
+            if isinstance(stream_id, str) and stream_id.isnumeric():
                 # Assume this refers to an integer webcam device id.
                 stream_id = int(stream_id)
             stream_ids.append(stream_id)
@@ -116,6 +122,7 @@ def process_args(multicam_args):
     return {
         "stream_ids": stream_ids,
         "grid_shape": grid_shape,
+        "show_fps": multicam_args["fps"],
         "win_flags": win_flags,
         "win_size": win_size,
     }
@@ -133,7 +140,7 @@ def write_mp4(frames, fps, fpath):
     if not fpath.endswith(".mp4"):
         fpath += ".mp4"
 
-    hw, w = frames[0].shape[:2]
+    h, w = frames[0].shape[:2]
 
     writer = cv2.VideoWriter(
         fpath, cv2.VideoWriter_fourcc(*"mp4v"), int(fps), (w, h)
