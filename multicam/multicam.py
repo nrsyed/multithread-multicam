@@ -216,7 +216,7 @@ def show_videos(
             representing the display grid shape.
         win_flags (int, optional): OpenCV imshow window properties flags.
         win_size (str|List[int], optional): Display window size.
-        show_fps (bool, optional): Display number of output frames per second.
+        show_fps (bool, optional): Display number of frames processed per second.
         out_frames (list, optional): A list to which displayed frames will be
             appended for use by the caller.
         func (function, optional): If provided, frames read from each video
@@ -239,6 +239,7 @@ def show_videos(
     num_fps_frames = 30
     previous_fps = deque(maxlen=num_fps_frames)
 
+    start_time = time.time()
     while True:
         loop_start_time = time.time()
 
@@ -249,16 +250,16 @@ def show_videos(
         if func is not None:
             frames = func(frames, *func_args, **func_kwargs)
 
+        # Place FPS in the corner of the first frame (if specified).
+        if show_fps:
+            cv2.putText(
+                frames[0], f"{int(sum(previous_fps) / num_fps_frames)} fps",
+                (2, 20), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, (255, 255, 255)
+            )
+
         image_to_display = grid_stitch(
             frames, grid_shape=grid_shape, resize_to=win_size
         )
-
-        if show_fps:
-            cv2.putText(
-                image_to_display,
-                f"{int(sum(previous_fps) / num_fps_frames)} fps",
-                (2, 20), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.9, (255, 255, 255)
-            )
 
         shower.frame = image_to_display
         if out_frames is not None:
@@ -266,6 +267,10 @@ def show_videos(
 
         previous_fps.append(int(1 / (time.time() - loop_start_time)))
 
+    elapsed = time.time() - start_time
+
     shower.stop()
     for getter in getters:
         getter.stop()
+
+    return elapsed
