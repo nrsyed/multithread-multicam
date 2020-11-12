@@ -174,11 +174,8 @@ def show_videos(
     previous_fps = deque(maxlen=num_fps_frames)
 
     start_time = time.time()
-    while True:
+    while shower and all(readers):
         loop_start_time = time.time()
-
-        if shower.stopped or any(reader.stopped for reader in readers):
-            break
 
         frames = [reader.frame for reader in readers]
         if func is not None:
@@ -195,6 +192,9 @@ def show_videos(
             frames, grid_shape=grid_shape, resize_to=win_size
         )
 
+        if shower.stopped:
+            break
+
         shower.frame = image_to_display
         if out_frames is not None:
             out_frames.append(image_to_display)
@@ -203,8 +203,8 @@ def show_videos(
 
     elapsed = time.time() - start_time
 
-    shower.stop()
     for reader in readers:
         reader.stop()
+    shower.stop()
 
     return elapsed
