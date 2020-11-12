@@ -11,7 +11,7 @@ setup(
     install_requires=[
         "numpy",
         "opencv-python",
-        "screeninfo"
+        "screeninfo",
     ],
     entry_points={
         "console_scripts": ["multicam = multicam.__main__:main"],

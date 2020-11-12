@@ -6,80 +6,14 @@ import time
 import cv2
 import numpy as np
 
-
-class VideoGetter():
-    def __init__(self, src=0):
-        """
-        Class to read frames from a VideoCapture in a dedicated thread.
-
-        Args:
-            src (int|str): Video source. Int if webcam id, str if path to file.
-        """
-        self.cap = cv2.VideoCapture(src)
-        self.grabbed, self.frame = self.cap.read()
-        self.stopped = False
-
-    def start(self):
-        threading.Thread(target=self.get, args=()).start()
-        return self
-
-    def get(self):
-        """
-        Method called in a thread to continually read frames from `self.cap`.
-        This way, a frame is always ready to be read. Frames are not queued;
-        if a frame is not read before `get()` reads a new frame, previous
-        frame is overwritten.
-        """
-        while not self.stopped:
-            if not self.grabbed:
-                self.stop()
-            else:
-                self.grabbed, self.frame = self.cap.read()
-
-    def stop(self):
-        self.stopped = True
-
-
-class VideoShower():
-    def __init__(self, frame=None, win_name="Video", win_flags=None):
-        """
-        Class to show frames in a dedicated thread.
-
-        Args:
-            frame (np.ndarray): (Initial) frame to display.
-            win_name (str): Name of `cv2.imshow()` window.
-        """
-        self.frame = frame
-        self.win_name = win_name
-        self.win_flags = win_flags
-        self.stopped = False
-
-    def start(self):
-        threading.Thread(target=self.show, args=()).start()
-        return self
-
-    def show(self):
-        """
-        Method called within thread to show new frames.
-        """
-        cv2.namedWindow(self.win_name, self.win_flags)
-        while not self.stopped:
-            # We can actually see an ~8% increase in FPS by only calling
-            # cv2.imshow when a new frame is set with an if statement. Thus,
-            # set `self.frame` to None after each call to `cv2.imshow()`.
-            if self.frame is not None:
-                cv2.imshow(self.win_name, self.frame)
-                self.frame = None
-
-            if cv2.waitKey(1) == ord("q"):
-                self.stopped = True
-
-    def stop(self):
-        cv2.destroyWindow(self.win_name)
-        self.stopped = True
+from .video_reader import VideoReader
+from .video_shower import VideoShower
 
 
 def resize(img, width=None, height=None, interpolation=cv2.INTER_AREA):
+    """
+    TODO
+    """
     h, w = img.shape[:2]
 
     if width and height:
@@ -226,7 +160,7 @@ def show_videos(
         func_args (list, optional): Additional args for `func`.
         func_kwargs (dict, optional): Additional keyword args for `func`.
     """
-    getters = [VideoGetter(stream_id).start() for stream_id in stream_ids]
+    readers = [VideoReader(stream_id).start() for stream_id in stream_ids]
     shower = VideoShower(
         win_name="Video streams", win_flags=win_flags
     ).start()
@@ -243,10 +177,10 @@ def show_videos(
     while True:
         loop_start_time = time.time()
 
-        if shower.stopped or any(getter.stopped for getter in getters):
+        if shower.stopped or any(reader.stopped for reader in readers):
             break
 
-        frames = [getter.frame for getter in getters]
+        frames = [reader.frame for reader in readers]
         if func is not None:
             frames = func(frames, *func_args, **func_kwargs)
 
@@ -270,7 +204,7 @@ def show_videos(
     elapsed = time.time() - start_time
 
     shower.stop()
-    for getter in getters:
-        getter.stop()
+    for reader in readers:
+        reader.stop()
 
     return elapsed
