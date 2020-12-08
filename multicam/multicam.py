@@ -1,4 +1,4 @@
-from collections import deque
+import collections
 import math
 import threading
 import time
@@ -12,7 +12,28 @@ from .video_shower import VideoShower
 
 def resize(img, width=None, height=None, interpolation=cv2.INTER_AREA):
     """
-    TODO
+    Resize an image array.
+
+    Args:
+        img (np.ndarray): Array representing image.
+        width (int): Width to which image should be resized.
+        height (int): Height to which image should be resized.
+        interpolation (int): OpenCV interpolation enum. See
+            `OpenCV interpolation flags`_.
+
+    Returns:
+        np.ndarray: resized
+            The resized image. If both ``width`` and ``height`` were provided
+            and match the input image dimensions, a pointer to the original
+            array is returned instead of a new image.
+
+    .. note::
+        If only one of ``width`` or ``height`` are provided, the dimension not
+        specified is automatically computed to maintain the aspect ratio of the
+        input image.
+
+    .. _`OpenCV interpolation flags`:
+        https://docs.opencv.org/3.4/da/d54/group__imgproc__transform.html#enum-members
     """
     h, w = img.shape[:2]
 
@@ -22,18 +43,37 @@ def resize(img, width=None, height=None, interpolation=cv2.INTER_AREA):
         else:
             new_h = height
             new_w = width
-    if width and not height:
+    elif width and not height:
         new_w = width
         new_h = int((new_w / w) * h)
     elif height and not width:
         new_h = height
         new_w = int((new_h / h) * w)
-    img = cv2.resize(img, (new_w, new_h), interpolation=interpolation)
-    return img
+    return cv2.resize(img, (new_w, new_h), interpolation=interpolation)
 
 
-def make_square(src, bg_fill_color=(0, 0, 0)):
+def make_square(src, bg_fill_color=None):
+    """
+    Make an image square by padding it on either side (top and bottom if
+    the width of ``src`` is greater than its height, or left and right if
+    the height of ``src`` is greater than its width) with a solid color.
+
+    Args:
+        src (np.ndarray): Input (source) image array.
+        bg_fill_color (Tuple[int]|int): Background fill color for image
+            padding; 3-tuple of 8-bit BGR color values if ``src`` has three
+            channels, int if ``src`` has a single channel.
+    """
+    # TODO: test function
     h, w = src.shape[:2]
+
+    if bg_fill_color is None:
+        if len(src.shape) == 3 and src.shape[2] == 3:
+            pass
+        elif len(src.shape) == 2:
+            pass
+        else:
+            raise ValueError("src must be a 1- or 3-channel array")
     bg_fill_color = np.array(bg_fill_color, dtype=src.dtype)
 
     if h == w:
@@ -171,7 +211,7 @@ def show_videos(
 
     # Number of frames to average for computing FPS.
     num_fps_frames = 30
-    previous_fps = deque(maxlen=num_fps_frames)
+    previous_fps = collections.deque(maxlen=num_fps_frames)
 
     start_time = time.time()
     while shower and all(readers):
