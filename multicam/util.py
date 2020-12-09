@@ -8,6 +8,18 @@ import multicam
 
 
 def get_cam_ids():
+    """
+    Return video device ids for all webcams connected to the computer.
+
+    Returns:
+        cam_ids (List[int]):
+            A sorted list of video device ids that can be passed to the
+            constructor of `cv2.VideoCapture`.
+
+    .. note::
+        Only supports Unix-based systems that represent connected video
+        devices with /dev/video* files.
+    """
     expr = r"/dev/video([0-9]+)"
     dev_ids = []
     for dev in glob.glob("/dev/video*"):
