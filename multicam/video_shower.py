@@ -9,8 +9,9 @@ class VideoShower():
         Class to show frames in a dedicated thread.
 
         Args:
-            frame (np.ndarray): (Initial) frame to display.
-            win_name (str): Name of `cv2.imshow()` window.
+            frame (np.ndarray): Initial frame to display.
+            win_name (str): Name of `cv2.imshow` window.
+            win_flags (int): Options for `cv2.namedWindow`.
         """
         self.frame = frame
         self.win_name = win_name
@@ -18,17 +19,19 @@ class VideoShower():
         self.stopped = False
 
     def start(self):
-        threading.Thread(target=self.show, args=()).start()
+        """
+        Start showing frames in a separate thread.
+        """
+        threading.Thread(target=self._show, args=()).start()
         return self
 
-    def show(self):
+    def _show(self):
         """
         Method called within thread to show new frames.
         """
         cv2.namedWindow(self.win_name, self.win_flags)
         while not self.stopped:
-            # Only calling cv2.immshow when a new frame is set results in
-            # improved performance.
+            # Only calling imshow when a new frame is set improves performance.
             if self.frame is not None:
                 cv2.imshow(self.win_name, self.frame)
                 self.frame = None
@@ -37,5 +40,8 @@ class VideoShower():
                 self.stopped = True
 
     def stop(self):
+        """
+        Stop showing frames and destroy the OpenCV window.
+        """
         cv2.destroyWindow(self.win_name)
         self.stopped = True
