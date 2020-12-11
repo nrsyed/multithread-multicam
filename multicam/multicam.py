@@ -49,43 +49,64 @@ def resize(img, width=None, height=None, interpolation=cv2.INTER_AREA):
     elif height and not width:
         new_h = height
         new_w = int((new_h / h) * w)
+
     return cv2.resize(img, (new_w, new_h), interpolation=interpolation)
 
 
 def make_square(src, bg_fill_color=None):
     """
     Make an image square by padding it on either side (top and bottom if
-    the width of ``src`` is greater than its height, or left and right if
-    the height of ``src`` is greater than its width) with a solid color.
+    the width of `src` is greater than its height, or left and right if
+    the height of `src` is greater than its width) with a solid color.
 
     Args:
         src (np.ndarray): Input (source) image array.
         bg_fill_color (Tuple[int]|int): Background fill color for image
-            padding; 3-tuple of 8-bit BGR color values if ``src`` has three
-            channels, int if ``src`` has a single channel.
-    """
-    # TODO: test function
-    h, w = src.shape[:2]
+            padding; 3-tuple of 8-bit BGR color values if `src` has three
+            channels, int if `src` has a single channel.
 
-    if bg_fill_color is None:
-        if len(src.shape) == 3 and src.shape[2] == 3:
-            pass
-        elif len(src.shape) == 2:
-            pass
-        else:
-            raise ValueError("src must be a 1- or 3-channel array")
-    bg_fill_color = np.array(bg_fill_color, dtype=src.dtype)
+    .. note::
+        If `src` is already square, a reference to it (the original array) is
+        returned, **not** a new array or a copy of the original array.
+    """
+    h, w = src.shape[:2]
 
     if h == w:
         return src
-    elif h > w:
-        dst = bg_fill_color * np.ones((h, h, 3), dtype=src.dtype)
+
+    if len(src.shape) == 3 and src.shape[2] == 3:
+        channels = 3
+    elif len(src.shape) == 2:
+        channels = 1
+    else:
+        raise ValueError("src must be a 1- or 3-channel array")
+
+    if bg_fill_color is None:
+        if channels == 3:
+            bg_fill_color = [0, 0, 0]
+        elif channels == 1:
+            bg_fill_color = 0
+    bg_fill_color = np.array(bg_fill_color, dtype=src.dtype)
+
+    start_col_idx = 0
+    end_col_idx = w
+    start_row_idx = 0
+    end_row_idx = h
+
+    if h > w:
         start_col_idx = (h - w) // 2
-        dst[:, start_col_idx:(start_col_idx + w), :] = src
+        end_col_idx = start_col_idx + w
+        shape = [h, h]
     elif w > h:
-        dst = bg_fill_color * np.ones((w, w, 3), dtype=src.dtype)
         start_row_idx = (w - h) // 2
-        dst[start_row_idx:(start_row_idx + h), :, :] = src
+        end_row_idx = start_row_idx + h
+        shape = [w, w]
+
+    if channels == 3:
+        shape.append(3)
+
+    dst = bg_fill_color * np.ones(shape, dtype=src.dtype)
+    dst[start_row_idx:end_row_idx, start_col_idx:end_col_idx, ...] = src
     return dst
 
 
